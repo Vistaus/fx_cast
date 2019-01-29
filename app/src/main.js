@@ -3,6 +3,7 @@ import dnssd from "dnssd";
 import http from "http";
 import fs from "fs";
 import path from "path";
+ import { Client } from "castv2";
 
 import * as transforms from "./transforms";
 import Media from "./Media";
@@ -97,6 +98,11 @@ async function handleMessage (message) {
 
 
     switch (message.subject) {
+        case "watchStatus": {
+            watchStatus();
+            break;
+        };
+
         case "bridge:getInfo": {
             const extensionVersion = message.data;
 
@@ -106,9 +112,10 @@ async function handleMessage (message) {
             };
         };
 
-        case "bridge:discover":
-            browser.start();
+        case "bridge:discover": {
+            discover();
             break;
+        };
 
         case "bridge:startHttpServer": {
             const { filePath, port } = message.data;
@@ -162,25 +169,93 @@ async function handleMessage (message) {
     }
 }
 
+function watchStatus () {
+    browser.on("serviceUp", service => {
+        const host = service.addresses[0];
+        const port = service.port;
 
-browser.on("serviceUp", service => {
-    transforms.encode.write({
-        subject: "shim:serviceUp"
-      , data: {
-            address: service.addresses[0]
-          , port: service.port
-          , id: service.txt.id
-          , friendlyName: service.txt.fn
-          , currentApp: service.txt.rs
-        }
-    });
-});
+        sendMessage({
+            subject: "statusServiceUp"
+          , data: {
+                address: host
+              , port
+              , id: service.txt.id
+              , friendlyName: service.txt.fn
+            }
+        });
 
-browser.on("serviceDown", service => {
-    transforms.encode.write({
-        subject:"shim:serviceDown"
-      , data: {
-            id: service.txt.id
-        }
+        const client = new Client();
+
+        client.connect({ host, port }, () => {
+            const connection = client.createChannel(
+                    "sender-0", "receiver-0"
+                  , "urn:x-cast:com.google.cast.tp.connection", "JSON");
+            const heartbeat = client.createChannel(
+                    "sender-0", "receiver-0"
+                  , "urn:x-cast:com.google.cast.tp.heartbeat", "JSON");
+            const receiver = client.createChannel(
+                    "sender-0", "receiver-0"
+                  , "urn:x-cast:com.google.cast.receiver", "JSON");
+
+            receiver.on("message", data => {
+                if (data.type !== "RECEIVER_STATUS") {
+                    return;
+                }
+
+                sendMessage({
+                    subject: "statusUpdate"
+                  , data: {
+                        id: service.txt.id
+                      , status: data.status
+                    }
+                });
+            });
+
+            connection.send({ type: "CONNECT" });
+            heartbeat.send({ type: "PING" });
+            receiver.send({ type: "GET_STATUS", requestId: 1 });
+
+            setInterval(() => {
+                heartbeat.send({ type: "PING" });
+            }, 5000)
+        });
     });
-});
+
+    browser.on("serviceDown", service => {
+        sendMessage({
+            subject: "statusServiceDown"
+          , data: {
+                id: service.txt.id
+            }
+        });
+    });
+
+    browser.start()
+}
+
+function discover () {
+    browser.on("serviceUp", service => {
+        transforms.encode.write({
+            subject: "shim:serviceUp"
+          , data: {
+                address: service.addresses[0]
+              , port: service.port
+              , id: service.txt.id
+              , friendlyName: service.txt.fn
+              , currentApp: service.txt.rs
+            }
+        });
+    });
+
+    browser.on("serviceDown", service => {
+        transforms.encode.write({
+            subject:"shim:serviceDown"
+          , data: {
+                id: service.txt.id
+            }
+        });
+    });
+
+    browser.start();
+}
+

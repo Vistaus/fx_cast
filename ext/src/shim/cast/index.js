@@ -178,8 +178,6 @@ onMessage(message => {
         case "shim:serviceUp": {
             const receiver = message.data;
 
-            console.log(receiver);
-
             if (state.receiverList.find(r => r.id === receiver.id)) {
                 break;
             }

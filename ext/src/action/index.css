@@ -1,0 +1,106 @@
+:root {
+    font-size: 10px;
+}
+
+body {
+    font: message-box;
+    margin: initial;
+}
+
+@keyframes spinner {
+    from {
+        transform: rotate(0);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#root {
+    display: flex;
+    flex-direction: column;
+    min-width: 300px;
+}
+
+.message {
+    flex: 1;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+.message--loading {
+    flex-direction: column;
+}
+.message--loading > img {
+    animation: 500ms spinner linear infinite;
+    width: 30px;
+    height: 30px;
+}
+.message--empty {}
+
+.receivers {
+    display: flex;
+    flex-direction: column;
+    margin: initial;
+    padding: initial;
+}
+
+.receiver {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 1rem;
+}
+.receiver > summary {
+    column-gap: 0.5rem;
+    cursor: pointer;
+    display: grid;
+    grid-template-rows: min-content min-content;
+    grid-template-columns: min-content 1fr;
+    grid-template-areas:
+        "stop name"
+        "stop current-app";
+    row-gap: 0.25rem;
+    -moz-user-select: none;
+    user-select: none;
+}
+.receiver__stop {
+    grid-area: stop;
+    align-items: center;
+    display: flex;
+}
+.receiver__name {
+    color: graytext;
+    font: menu;
+    grid-area: name;
+}
+.receiver__current-app {
+    grid-area: current-app;
+}
+
+.receiver__controls {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+    width: 100%;
+}
+
+.receiver__control {
+
+}
+
+.receiver__control--mute {
+    background: initial;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: initial;
+    height: 18px;
+    padding: initial;
+    width: 18px;
+}
+
+.receiver__control--mute {
+    background-image: url("assets/audioMutedButton.svg");
+}
+.receiver__control--volume {
+    flex: 1;
+}

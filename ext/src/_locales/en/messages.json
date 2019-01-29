@@ -152,4 +152,15 @@
   , "optionsSaved": {
         "message": "Saved!"
     }
+
+
+  , "actionTogglePlaybackPlay": {
+        "message": "Play"
+    }
+  , "actionTogglePlaybackPause": {
+        "message": "Pause"
+    }
+  , "actionStop": {
+        "message": "Stop"
+    }
 }

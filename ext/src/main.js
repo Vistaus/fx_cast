@@ -445,6 +445,56 @@ browser.runtime.onConnect.addListener(port => {
     })
 });
 
+
+/**
+ * We need a bridge running in the background to track status
+ * updates on the receiver list.
+ */
+const statusBridge = browser.runtime.connectNative(APPLICATION_NAME);
+let statusReceiverMap = new Map();
+
+statusBridge.onMessage.addListener(message => {
+    switch (message.subject) {
+        case "statusServiceUp": {
+            // Avoid duplicates
+            if (statusReceiverMap.has(message.data.id)) {
+                break;
+            }
+
+            // Add to list
+            statusReceiverMap.set(message.data.id, message.data);
+            break;
+        };
+
+        case "statusServiceDown": {
+            // Remove from list
+            statusReceiverMap.delete(message.data.id);
+            break;
+        };
+
+        case "statusUpdate": {
+            const { id, status } = message.data;
+            if (status.applications && status.applications.length) {
+                const receiver = statusReceiverMap.get(id);
+                receiver.application = status.applications[0];
+                receiver.volume = status.volume;
+                statusReceiverMap.set(id, receiver);
+
+                messageRouter.handleMessage({
+                    subject: "action:statusUpdate"
+                  , data: receiver
+                });
+            }
+            break;
+        };
+    }
+});
+
+statusBridge.postMessage({
+    subject: "watchStatus"
+});
+
+
 messageRouter.register("main", async (message, sender) => {
     const tabId = sender && sender.tab.id;
 
@@ -484,6 +534,13 @@ messageRouter.register("main", async (message, sender) => {
             }
             break;
         };
+
+        case "main:actionReady": {
+            messageRouter.handleMessage({
+                subject: "action:populate"
+              , data: Array.from(statusReceiverMap.values())
+            });
+        }
     }
 });
 
